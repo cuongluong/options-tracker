@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PremiumPulse – Wheel Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2230;
+    --bg4: #212836;
+    --border: #2a3142;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --green: #39d98a;
+    --green-dim: rgba(57,217,138,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.12);
+    --orange: #f0883e;
+    --accent: #39d98a;
+    --card-bg: #161b22;
+    --sidebar-w: 220px;
+    --radius: 10px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #39d98a, #1a8f56);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  .logo-text .name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .logo-text .sub { font-size: 11px; color: var(--text3); }
+
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--text3); padding: 18px 18px 6px;
+    text-transform: uppercase;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 18px; font-size: 13.5px; font-weight: 500;
+    color: var(--text2); cursor: pointer; border-radius: 0;
+    transition: all 0.15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active { color: var(--text); background: rgba(57,217,138,0.08); border-left-color: var(--green); }
+  .nav-item svg { width:15px; height:15px; flex-shrink:0; }
+
+  .sidebar-spacer { flex:1; }
+
+  .sidebar-user {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .user-avatar {
+    width:32px; height:32px; border-radius:50%;
+    background: linear-gradient(135deg, #4a6fa5, #2d4a7a);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:600; flex-shrink:0;
+  }
+  .user-info .uname { font-size:13px; font-weight:500; }
+  .user-info .uemail { font-size:11px; color:var(--text3); }
+  .sign-out-btn {
+    display:flex; align-items:center; gap:6px;
+    font-size:11.5px; color:var(--text3); cursor:pointer;
+    padding: 6px 18px 12px; transition:color 0.15s;
+  }
+  .sign-out-btn:hover { color:var(--red); }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .page { display: none; padding: 32px 36px; animation: fadeIn 0.2s ease; }
+  .page.active { display: block; }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+  /* ── TOP BAR ── */
+  .page-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 28px;
+  }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
+  .page-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  .btn-primary {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--blue); color: #fff;
+    padding: 9px 16px; border-radius: 7px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: #79b8ff; }
+  .btn-primary:active { transform: scale(0.97); }
+
+  /* ── STAT CARDS ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .stat-card .slabel { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .stat-card .sval { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; }
+  .stat-card .ssub { font-size: 11px; color: var(--green); margin-top: 5px; display:flex; align-items:center; gap:4px; }
+  .stat-card .ssub.neutral { color: var(--text2); }
+  .stat-icon {
+    width:36px; height:36px; border-radius:8px;
+    background: rgba(57,217,138,0.1);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--green); flex-shrink:0;
+  }
+
+  /* ── DASHBOARD GRID ── */
+  .dash-grid { display: grid; grid-template-columns: 1fr 1.8fr; gap: 16px; }
+  .dash-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+  }
+  .dash-card-title { font-size: 14px; font-weight: 600; margin-bottom: 18px; }
+
+  .account-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;
+  }
+  .account-row:last-child { border-bottom: none; }
+  .account-row .alabel { color: var(--text2); display:flex; align-items:center; gap:8px; }
+  .account-row .aval { font-weight:600; }
+  .account-row.highlight .aval { color: var(--green); font-size:15px; }
+
+  .open-trade-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px; border-radius: 8px; background: var(--bg3);
+    margin-bottom: 10px; cursor:pointer; transition: background 0.15s;
+  }
+  .open-trade-item:hover { background: var(--bg4); }
+  .open-trade-item:last-child { margin-bottom: 0; }
+  .oti-left .oti-ticker { font-weight: 700; font-size: 14px; display:flex; align-items:center; gap:8px; }
+  .oti-left .oti-meta { font-size: 11.5px; color: var(--text2); margin-top:4px; }
+  .oti-right { text-align: right; }
+  .oti-right .oti-pnl { color: var(--green); font-weight: 600; font-size: 14px; }
+  .oti-right .oti-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .badge-put { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge-call { background: rgba(57,217,138,0.12); color: var(--green); }
+  .badge-open { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-closed { background: rgba(57,217,138,0.12); color: var(--green); border: 1px solid rgba(57,217,138,0.3); }
+  .badge-expired { background: rgba(255,255,255,0.06); color: var(--text2); border: 1px solid var(--border); }
+  .badge-contracts { background: rgba(255,255,255,0.06); color: var(--text2); font-size:10px; padding:2px 7px; }
+  .badge-sto { background: rgba(57,217,138,0.1); color: #5cdb95; }
+
+  /* ── TRADES TABLE ── */
+  .filter-bar {
+    display: flex; gap: 12px; align-items: center;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .filter-bar input, .filter-bar select {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 7px 12px;
+    font-size: 13px; font-family: inherit; outline:none;
+    transition: border-color 0.15s;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--blue); }
+  .filter-bar input { min-width: 200px; }
+  .filter-count { font-size: 12px; font-weight: 600; color: var(--blue); background: var(--blue-dim); padding: 4px 10px; border-radius: 20px; white-space:nowrap; }
+
+  .trades-table-wrap {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    padding: 13px 16px; text-align: left; font-size: 11.5px; font-weight: 600;
+    color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border); background: var(--bg3);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.025); }
+  tbody td { padding: 13px 16px; vertical-align: middle; }
+  .td-ticker { font-weight: 700; font-size: 14px; }
+  .td-date { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .td-details { display:flex; flex-direction:column; gap:4px; }
+  .td-pnl { color: var(--green); font-weight: 600; }
+  .td-ror { color: var(--green); font-weight: 600; font-size: 13px; }
+  .td-premium { font-weight: 600; }
+  .action-btn { background:none; border:none; color:var(--text2); cursor:pointer; padding:4px; border-radius:4px; transition:color 0.15s, background 0.15s; }
+  .action-btn:hover { color:var(--text); background:rgba(255,255,255,0.08); }
+
+  /* ── ADD TRADE FORM ── */
+  .form-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px;
+  }
+  .form-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:28px; }
+  .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:12px; font-weight:600; color:var(--text2); }
+  .form-group input, .form-group select, .form-group textarea {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 10px 13px;
+    font-size: 13.5px; font-family: inherit; outline:none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--blue); }
+  .form-group .form-hint { font-size:11px; color:var(--text3); margin-top:2px; }
+  .form-group.span2 { grid-column: span 2; }
+  .form-group.span3 { grid-column: span 3; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:28px; padding-top:22px; border-top:1px solid var(--border); }
+  .btn-secondary {
+    padding:9px 18px; border-radius:7px; border:1px solid var(--border);
+    background: transparent; color: var(--text2); font-size:13px; font-weight:600;
+    cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+  }
+  .btn-secondary:hover { color:var(--text); border-color:var(--text3); }
+
+  /* ── REPORTS ── */
+  .chart-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+  }
+  .chart-title { font-size:15px; font-weight:600; margin-bottom:4px; }
+  .chart-sub { font-size:12px; color:var(--text2); margin-bottom:20px; }
+  canvas { max-height: 260px; }
+
+  .breakdown-table {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow:hidden;
+  }
+  .breakdown-title { font-size:15px; font-weight:600; padding:20px 22px; border-bottom:1px solid var(--border); }
+  .breakdown-table table thead th { background: var(--bg3); }
+  .breakdown-table table tbody td { padding:12px 16px; }
+  .month-label { font-weight:600; }
+  .neg { color: var(--red) !important; }
+
+  /* ── PERFORMANCE ── */
+  .perf-return-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+  .perf-return-card {
+    background: var(--card-bg); border:1px solid var(--border);
+    border-radius: var(--radius); padding:20px;
+  }
+  .perf-return-card .prc-label { font-size:12px; color:var(--text2); margin-bottom:10px; }
+  .perf-return-card .prc-val { font-family:'Syne',sans-serif; font-size:28px; font-weight:700; color:var(--green); display:flex; align-items:center; gap:6px; }
+  .filter-section {
+    background: var(--card-bg); border:1px solid var(--border);
+    border-radius: var(--radius); padding:20px; margin-bottom:20px;
+  }
+  .filter-section-title { font-size:13px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+  .filter-row { display:flex; gap:14px; }
+  .filter-row select {
+    background: var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:7px 12px; font-size:13px; font-family:inherit; outline:none;
+  }
+  .perf-month-section {
+    background: var(--card-bg); border:1px solid var(--border);
+    border-radius: var(--radius); overflow:hidden;
+  }
+  .perf-month-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    font-size:14px; font-weight:600;
+  }
+  .perf-month-header .mh-val { color:var(--green); font-size:15px; }
+  .perf-ticker-table { width:100%; border-collapse:collapse; }
+  .perf-ticker-table thead th { padding:10px 20px; text-align:left; font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.05em; background:var(--bg3); }
+  .perf-ticker-table tbody td { padding:12px 20px; border-top:1px solid var(--border); }
+  .perf-month-block { margin-bottom:16px; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* ── TAB TOGGLE ── */
+  .tab-row { display:flex; gap:0; margin-bottom:20px; background:var(--bg3); border:1px solid var(--border); border-radius:7px; padding:3px; width:fit-content; }
+  .tab-btn { padding:7px 18px; border-radius:5px; border:none; background:none; color:var(--text2); font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .tab-btn.active { background:var(--blue); color:#fff; font-weight:600; }
+
+  .total-row { padding:18px 22px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-weight:700; font-size:14px; }
+  .total-row .tv { color:var(--green); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📈</div>
+    <div class="logo-text">
+      <div class="name">PremiumPulse</div>
+      <div class="sub">Wheel Tracker</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section-label">Navigation</div>
+  <div class="nav-item active" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+  <div class="nav-item" data-page="trades">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+    Trades
+  </div>
+  <div class="nav-item" data-page="holdings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Holdings
+  </div>
+  <div class="nav-item" data-page="reports">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    Reports
+  </div>
+  <div class="nav-item" data-page="performance">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Performance
+  </div>
+  <div class="nav-item" data-page="calculator">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg>
+    Calculator
+  </div>
+
+  <div class="sidebar-section-label">Account</div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Referrals
+  </div>
+  <div class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Support
+  </div>
+  <div class="nav-item" data-page="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </div>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-user">
+    <div class="user-avatar">C</div>
+    <div class="user-info">
+      <div class="uname">Cuong</div>
+      <div class="uemail">cuongluong95@gmail.com</div>
+    </div>
+  </div>
+  <div class="sign-out-btn">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Sign Out
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Welcome back, Cuong</div>
+        <div class="page-sub">Here's your portfolio performance today</div>
+      </div>
+      <button class="btn-primary" onclick="goToAddTrade()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Trade
+      </button>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Realized P&L</div>
+          <div class="sval" style="color:var(--green)">$31,288.82</div>
+          <div class="ssub">↗ From closed trades</div>
+        </div>
+        <div class="stat-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Unrealized P&L</div>
+          <div class="sval" style="color:var(--green)">$8,880</div>
+          <div class="ssub">↗ From open trades</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(88,166,255,0.1);color:var(--blue)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Open Positions</div>
+          <div class="sval">3</div>
+          <div class="ssub neutral" style="color:var(--text2)">Active trades</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(240,136,62,0.1);color:var(--orange)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Portfolio Value</div>
+          <div class="sval">$466,031.27</div>
+          <div class="ssub">↗ +661.3% return</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(88,166,255,0.1);color:var(--blue)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="dash-card">
+        <div class="dash-card-title">Account Summary</div>
+        <div class="account-row">
+          <span class="alabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
+            Total Deposits
+          </span>
+          <span class="aval" style="display:flex;align-items:center;gap:6px">
+            $0
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </span>
+        </div>
+        <div class="account-row">
+          <span class="alabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Brokerage Cash
+          </span>
+          <span class="aval" style="display:flex;align-items:center;gap:6px">
+            $0
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </span>
+        </div>
+        <div class="account-row">
+          <span class="alabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Open Collateral
+          </span>
+          <span class="aval">$81,000</span>
+        </div>
+        <div class="account-row">
+          <span class="alabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Call PMV Total
+          </span>
+          <span class="aval">$316,800</span>
+        </div>
+        <div class="account-row highlight">
+          <span class="alabel">Available Cash</span>
+          <span class="aval">$0</span>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:var(--text2)">Total Portfolio Value</span>
+          <span style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">$466,031.27</span>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-title">Open Trades by Expiration</div>
+        <div class="open-trade-item">
+          <div class="oti-left">
+            <div class="oti-ticker">AAOI <span class="badge badge-put">PUT</span> <span style="font-size:11px;color:var(--text3);font-weight:400">⏱ 14 days ago</span></div>
+            <div class="oti-meta">$90 Strike • Expires Mar 20, 2026</div>
+          </div>
+          <div class="oti-right">
+            <div class="oti-pnl">↗ $3860.64</div>
+            <div class="oti-sub">Unrealized P&L</div>
+          </div>
+        </div>
+        <div class="open-trade-item">
+          <div class="oti-left">
+            <div class="oti-ticker">IREN <span class="badge badge-call">CALL</span> <span style="font-size:11px;color:var(--text3);font-weight:400">⏱ 14 days ago</span></div>
+            <div class="oti-meta">$48 Strike • Expires Mar 20, 2026</div>
+          </div>
+          <div class="oti-right">
+            <div class="oti-pnl">↗ $1871.04</div>
+            <div class="oti-sub">Unrealized P&L</div>
+          </div>
+        </div>
+        <div class="open-trade-item">
+          <div class="oti-left">
+            <div class="oti-ticker">IREN <span class="badge badge-call">CALL</span> <span style="font-size:11px;color:var(--text3);font-weight:400">⏱ 14 days ago</span></div>
+            <div class="oti-meta">$48 Strike • Expires Mar 20, 2026</div>
+          </div>
+          <div class="oti-right">
+            <div class="oti-pnl">↗ $3148.32</div>
+            <div class="oti-sub">Unrealized P&L</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADES PAGE -->
+  <div class="page" id="page-trades">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Options Trades</div>
+        <div class="page-sub">Track and manage all your options positions</div>
+      </div>
+      <button class="btn-primary" onclick="goToAddTrade()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Trade
+      </button>
+    </div>
+
+    <div class="filter-bar">
+      <input type="text" id="trade-search" placeholder="🔍  Search trades by ticker..." oninput="filterTrades()">
+      <select id="filter-status" onchange="filterTrades()">
+        <option value="">All Status</option>
+        <option value="OPEN">Open</option>
+        <option value="CLOSED">Closed</option>
+        <option value="EXPIRED">Expired</option>
+      </select>
+      <select id="filter-type" onchange="filterTrades()">
+        <option value="">All Types</option>
+        <option value="CALL">Call</option>
+        <option value="PUT">Put</option>
+      </select>
+      <input type="date" id="filter-from" onchange="filterTrades()">
+      <input type="date" id="filter-to" onchange="filterTrades()">
+      <span class="filter-count" id="trade-count">42 trades found</span>
+    </div>
+
+    <div class="trades-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Details</th>
+            <th>Strike</th>
+            <th>Expiration</th>
+            <th>Premium</th>
+            <th>Status</th>
+            <th>P&L</th>
+            <th>ROR</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="trades-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ADD TRADE PAGE -->
+  <div class="page" id="page-add-trade">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Options Trades</div>
+        <div class="page-sub">Track and manage all your options positions</div>
+      </div>
+      <button class="btn-primary" onclick="showAddTrade()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Trade
+      </button>
+    </div>
+    <div class="form-card">
+      <div class="form-title">Add New Trade</div>
+      <div class="form-grid" id="add-trade-form">
+        <div class="form-group">
+          <label>Ticker Symbol *</label>
+          <input type="text" id="ft-ticker" placeholder="AAPL">
+        </div>
+        <div class="form-group">
+          <label>Trade Date *</label>
+          <input type="date" id="ft-date">
+        </div>
+        <div class="form-group">
+          <label>Trade Action *</label>
+          <select id="ft-action">
+            <option>Sell to Open (STO)</option>
+            <option>Buy to Close (BTC)</option>
+            <option>Buy to Open (BTO)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Strategy *</label>
+          <select id="ft-strategy" onchange="updateFormCalcs()">
+            <option>Put</option>
+            <option>Call</option>
+            <option>PMCC Call</option>
+            <option>Covered Call</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>No. of Contracts *</label>
+          <input type="number" id="ft-contracts" value="1" min="1" oninput="updateFormCalcs()">
+        </div>
+        <div class="form-group">
+          <label>Strike Price *</label>
+          <input type="number" id="ft-strike" value="150.00" step="0.01" oninput="updateFormCalcs()">
+        </div>
+        <div class="form-group">
+          <label>Premium Collected *</label>
+          <input type="number" id="ft-premium" value="500.00" step="0.01" oninput="updateFormCalcs()">
+          <span class="form-hint">Enter a negative value for debits (e.g., -50.00)</span>
+        </div>
+        <div class="form-group">
+          <label>Brokerage Fee ($)</label>
+          <input type="number" id="ft-fee" value="0.04" step="0.01">
+          <span class="form-hint">Auto-calculated from portfolio settings.</span>
+        </div>
+        <div class="form-group">
+          <label>Expiration Date *</label>
+          <input type="date" id="ft-expiry">
+        </div>
+        <div class="form-group">
+          <label>Collateral</label>
+          <input type="number" id="ft-collateral" readonly>
+          <span class="form-hint">Auto-calculated for Puts</span>
+        </div>
+        <div class="form-group">
+          <label>Call PMV</label>
+          <input type="text" id="ft-pmv" placeholder="Long 200 strike, Short 250 strike" readonly>
+          <span class="form-hint">Auto-calculated for PMCC Calls</span>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="ft-status">
+            <option>Open</option>
+            <option>Closed</option>
+            <option>Expired</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Realized P&L</label>
+          <input type="number" id="ft-realized" value="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Unrealized P&L</label>
+          <input type="number" id="ft-unrealized" value="0" step="0.01">
+        </div>
+        <div class="form-group"></div>
+        <div class="form-group span3">
+          <label>Notes</label>
+          <textarea id="ft-notes" placeholder="Additional notes about this trade..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-secondary" onclick="navigate('trades')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Cancel
+        </button>
+        <button class="btn-primary" onclick="saveTrade()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Trade
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOLDINGS PAGE -->
+  <div class="page" id="page-holdings">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Holdings</div>
+        <div class="page-sub">Your current stock positions and cost basis</div>
+      </div>
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:48px;text-align:center;color:var(--text2)">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;display:block;opacity:0.4"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">No Holdings Yet</div>
+      <div style="font-size:13px">Add stock positions to track your cost basis and wheel assignments.</div>
+    </div>
+  </div>
+
+  <!-- REPORTS PAGE -->
+  <div class="page" id="page-reports">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Performance Reports</div>
+        <div class="page-sub">Analyze your trading performance and monthly returns</div>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom:24px">
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Monthly Win Rate</div>
+          <div class="sval" style="color:var(--green)">85.7%</div>
+          <div class="ssub">↗ 6 of 7 months positive</div>
+        </div>
+        <div class="stat-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Avg Monthly Return</div>
+          <div class="sval" style="color:var(--green)">$4,470</div>
+          <div class="ssub">↗ Average per month</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(88,166,255,0.1);color:var(--blue)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Total Realized P&L</div>
+          <div class="sval" style="color:var(--green)">$31,288.82</div>
+          <div class="ssub">↗ From closed trades</div>
+        </div>
+        <div class="stat-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="slabel">Account Size</div>
+          <div class="sval">$0</div>
+          <div class="ssub neutral" style="color:var(--text2)">Total deposits</div>
+        </div>
+        <div class="stat-icon" style="background:rgba(88,166,255,0.1);color:var(--blue)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchReportTab('monthly',this)">Monthly Performance</button>
+      <button class="tab-btn" onclick="switchReportTab('ticker',this)">By Ticker</button>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Monthly Trading Performance</div>
+      <div class="chart-sub">Monthly P&L and number of closed trades</div>
+      <canvas id="monthly-chart"></canvas>
+    </div>
+
+    <div class="breakdown-table">
+      <div class="breakdown-title">Monthly Breakdown</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Trades</th>
+            <th>Monthly P&L</th>
+            <th>Return %</th>
+            <th>Win Rate</th>
+            <th>Cumulative</th>
+          </tr>
+        </thead>
+        <tbody id="monthly-breakdown-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE PAGE -->
+  <div class="page" id="page-performance">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Performance Analysis</div>
+        <div class="page-sub">Review your option returns over time</div>
+      </div>
+    </div>
+
+    <div class="perf-return-grid">
+      <div class="perf-return-card">
+        <div class="prc-label">1-Month Return %</div>
+        <div class="prc-val">↗ 3.29%</div>
+      </div>
+      <div class="perf-return-card">
+        <div class="prc-label">1-Year Return %</div>
+        <div class="prc-val">↗ 8.62%</div>
+      </div>
+      <div class="perf-return-card">
+        <div class="prc-label">YTD Return %</div>
+        <div class="prc-val">↗ 2.80%</div>
+      </div>
+      <div class="perf-return-card">
+        <div class="prc-label">All-Time Return %</div>
+        <div class="prc-val">↗ 8.62%</div>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-section-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Filter Performance Data
+      </div>
+      <div class="filter-row">
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">View Mode</div>
+          <select><option>By Month</option><option>By Quarter</option><option>By Year</option></select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Month</div>
+          <select><option>All Months</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div id="perf-by-month"></div>
+  </div>
+
+  <!-- CALCULATOR PAGE -->
+  <div class="page" id="page-calculator">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Options Calculator</div>
+        <div class="page-sub">Calculate premium, ROR, and annualized returns</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="form-card">
+        <div class="form-title" style="font-size:15px">Put / Cash-Secured Put</div>
+        <div style="display:grid;gap:14px;margin-bottom:20px">
+          <div class="form-group"><label>Strike Price ($)</label><input type="number" id="calc-strike" value="50" oninput="calcROR()"></div>
+          <div class="form-group"><label>Premium Collected ($)</label><input type="number" id="calc-premium" value="1.50" step="0.01" oninput="calcROR()"></div>
+          <div class="form-group"><label>Contracts</label><input type="number" id="calc-contracts" value="1" oninput="calcROR()"></div>
+          <div class="form-group"><label>Days to Expiration</label><input type="number" id="calc-dte" value="30" oninput="calcROR()"></div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px;display:grid;gap:10px">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Total Premium</span>
+            <span id="calc-total-prem" style="font-weight:600;color:var(--green)">$150.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Collateral Required</span>
+            <span id="calc-collateral" style="font-weight:600">$5,000.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">ROR (at expiry)</span>
+            <span id="calc-ror" style="font-weight:600;color:var(--green)">3.00%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:10px;border-top:1px solid var(--border)">
+            <span style="color:var(--text2)">Annualized ROR</span>
+            <span id="calc-annual" style="font-weight:700;font-size:15px;color:var(--green)">36.50%</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-title" style="font-size:15px">Covered Call</div>
+        <div style="display:grid;gap:14px;margin-bottom:20px">
+          <div class="form-group"><label>Stock Purchase Price ($)</label><input type="number" id="cc-purchase" value="50" oninput="calcCC()"></div>
+          <div class="form-group"><label>Call Strike Price ($)</label><input type="number" id="cc-strike" value="55" oninput="calcCC()"></div>
+          <div class="form-group"><label>Call Premium ($)</label><input type="number" id="cc-premium" value="1.20" step="0.01" oninput="calcCC()"></div>
+          <div class="form-group"><label>Shares / Contracts</label><input type="number" id="cc-shares" value="100" oninput="calcCC()"></div>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:18px;display:grid;gap:10px">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Max Profit</span>
+            <span id="cc-max-profit" style="font-weight:600;color:var(--green)">$620.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Breakeven Price</span>
+            <span id="cc-breakeven" style="font-weight:600">$48.80</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span style="color:var(--text2)">Downside Protection</span>
+            <span id="cc-protection" style="font-weight:600;color:var(--green)">2.40%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding-top:10px;border-top:1px solid var(--border)">
+            <span style="color:var(--text2)">Return if Called Away</span>
+            <span id="cc-return" style="font-weight:700;font-size:15px;color:var(--green)">12.40%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Settings</div>
+        <div class="page-sub">Configure GitHub Gist sync to access your trades on any device</div>
+      </div>
+    </div>
+    <div id="sync-banner" style="display:none;margin-bottom:20px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;align-items:center;gap:10px"></div>
+    <div class="form-card" style="max-width:620px">
+      <div class="form-title" style="font-size:16px;margin-bottom:6px">GitHub Gist Sync</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6">Store your trades in a private GitHub Gist so every device stays in sync. Takes about 2 minutes to set up.</p>
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">Step 1 — Create a Personal Access Token</div>
+        <ol style="font-size:13px;color:var(--text2);line-height:2.2;padding-left:18px">
+          <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--blue)">github.com/settings/tokens/new</a></li>
+          <li>Name it <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:12px">wheel-tracker</code></li>
+          <li>Set expiration to <strong style="color:var(--text)">No expiration</strong></li>
+          <li>Under Scopes, check only <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:12px">gist</code></li>
+          <li>Click <strong style="color:var(--text)">Generate token</strong> and copy it</li>
+        </ol>
+      </div>
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--blue);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">Step 2 — Create a Private Gist</div>
+        <ol style="font-size:13px;color:var(--text2);line-height:2.2;padding-left:18px">
+          <li>Go to <a href="https://gist.github.com" target="_blank" style="color:var(--blue)">gist.github.com</a></li>
+          <li>Filename: <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:12px">trades.json</code> &nbsp; Content: <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:12px">[]</code></li>
+          <li>Click <strong style="color:var(--text)">Create secret gist</strong></li>
+          <li>Copy the Gist ID from the URL: <code style="background:var(--bg3);padding:2px 8px;border-radius:4px;font-size:12px;color:var(--green)">gist.github.com/yourname/<strong>THIS_PART</strong></code></li>
+        </ol>
+      </div>
+      <div style="display:grid;gap:16px;margin-bottom:24px">
+        <div class="form-group">
+          <label>GitHub Personal Access Token</label>
+          <input type="password" id="cfg-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          <span class="form-hint">Stored only in your browser localStorage — never sent anywhere except the GitHub API.</span>
+        </div>
+        <div class="form-group">
+          <label>Gist ID</label>
+          <input type="text" id="cfg-gist" placeholder="abc123def456abc123def456abc123de">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="saveGistConfig()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save &amp; Test Connection
+        </button>
+        <button class="btn-secondary" onclick="pushToGist(true)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Push Local Data to Gist
+        </button>
+        <button class="btn-secondary" onclick="pullFromGist(true)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Pull Latest from Gist
+        </button>
+      </div>
+      <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">Sync Status</div>
+        <div id="sync-status-detail" style="font-size:13px;color:var(--text2)">Not configured yet.</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /main -->
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const TRADES_DATA = [
+  { id:1,  ticker:'AAOI', date:'Mar 16, 2026', contracts:9,  action:'SELL TO OPEN', type:'PUT',  strike:90, expiry:'Mar 20, 2026', premium:3861.00, status:'OPEN',    pnl:3860.64, ror:4.8  },
+  { id:2,  ticker:'IREN', date:'Mar 16, 2026', contracts:24, action:'SELL TO OPEN', type:'CALL', strike:48, expiry:'Mar 20, 2026', premium:1872.00, status:'OPEN',    pnl:1871.04, ror:1.6  },
+  { id:3,  ticker:'IREN', date:'Mar 16, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:48, expiry:'Mar 20, 2026', premium:3150.00, status:'OPEN',    pnl:3148.32, ror:1.6  },
+  { id:4,  ticker:'IREN', date:'Mar 11, 2026', contracts:24, action:'SELL TO OPEN', type:'CALL', strike:45, expiry:'Mar 13, 2026', premium:672.00,  status:'CLOSED',  pnl:647.04,  ror:0.6  },
+  { id:5,  ticker:'IREN', date:'Mar 11, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:45, expiry:'Mar 13, 2026', premium:1092.00, status:'CLOSED',  pnl:1049.96, ror:0.6  },
+  { id:6,  ticker:'IREN', date:'Mar 10, 2026', contracts:22, action:'SELL TO OPEN', type:'PUT',  strike:37, expiry:'Mar 13, 2026', premium:1980.00, status:'EXPIRED', pnl:1979.12, ror:2.4  },
+  { id:7,  ticker:'IREN', date:'Mar 04, 2026', contracts:24, action:'SELL TO OPEN', type:'CALL', strike:48, expiry:'Mar 06, 2026', premium:744.00,  status:'CLOSED',  pnl:719.04,  ror:0.6  },
+  { id:8,  ticker:'IREN', date:'Mar 04, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:48, expiry:'Mar 06, 2026', premium:1302.00, status:'CLOSED',  pnl:1258.82, ror:0.6  },
+  { id:9,  ticker:'IREN', date:'Feb 24, 2026', contracts:24, action:'SELL TO OPEN', type:'CALL', strike:45, expiry:'Feb 27, 2026', premium:912.00,  status:'CLOSED',  pnl:887.04,  ror:0.9  },
+  { id:10, ticker:'IREN', date:'Feb 24, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:45, expiry:'Feb 27, 2026', premium:1596.00, status:'CLOSED',  pnl:1551.96, ror:0.9  },
+  { id:11, ticker:'ZETA', date:'Feb 10, 2026', contracts:15, action:'SELL TO OPEN', type:'PUT',  strike:22, expiry:'Feb 21, 2026', premium:3750.00, status:'CLOSED',  pnl:3723.84, ror:11.4 },
+  { id:12, ticker:'IREN', date:'Feb 03, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:25, expiry:'Feb 07, 2026', premium:1260.00, status:'CLOSED',  pnl:1214.00, ror:1.2  },
+  { id:13, ticker:'IREN', date:'Jan 27, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:28, expiry:'Jan 30, 2026', premium:1050.00, status:'CLOSED',  pnl:1024.00, ror:0.9  },
+  { id:14, ticker:'IREN', date:'Jan 20, 2026', contracts:42, action:'SELL TO OPEN', type:'PUT',  strike:14, expiry:'Jan 23, 2026', premium:882.00,  status:'EXPIRED', pnl:881.12,  ror:1.5  },
+  { id:15, ticker:'IREN', date:'Jan 13, 2026', contracts:42, action:'SELL TO OPEN', type:'PUT',  strike:17, expiry:'Jan 16, 2026', premium:1134.00, status:'EXPIRED', pnl:1133.12, ror:1.6  },
+  { id:16, ticker:'IREN', date:'Jan 06, 2026', contracts:42, action:'SELL TO OPEN', type:'CALL', strike:20, expiry:'Jan 09, 2026', premium:1260.00, status:'CLOSED',  pnl:1234.00, ror:1.5  },
+  { id:17, ticker:'IREN', date:'Jan 02, 2026', contracts:42, action:'SELL TO OPEN', type:'PUT',  strike:18, expiry:'Jan 06, 2026', premium:-14800.00, status:'CLOSED', pnl:-14798.94, ror:-19.7 },
+];
+
+const MONTHLY_DATA = [
+  { month:'Apr 2026', trades:0, pnl:0,         ret:0,    wr:null, cum:31288.82 },
+  { month:'Mar 2026', trades:6, pnl:6849.64,   ret:0,    wr:100,  cum:31288.82 },
+  { month:'Feb 2026', trades:3, pnl:4937.84,   ret:0,    wr:100,  cum:24439.18 },
+  { month:'Jan 2026', trades:7, pnl:-8502.94,  ret:0,    wr:57,   cum:19501.34 },
+  { month:'Dec 2025', trades:8, pnl:3558.58,   ret:0,    wr:100,  cum:28004.28 },
+  { month:'Nov 2025', trades:4, pnl:4712.20,   ret:0,    wr:100,  cum:24445.70 },
+  { month:'Oct 2025', trades:8, pnl:16536.79,  ret:0,    wr:100,  cum:19733.50 },
+  { month:'Sep 2025', trades:1, pnl:3196.71,   ret:0,    wr:100,  cum:3196.71  },
+  { month:'Aug 2025', trades:0, pnl:0,         ret:0,    wr:null, cum:0        },
+  { month:'Jul 2025', trades:0, pnl:0,         ret:0,    wr:null, cum:0        },
+  { month:'Jun 2025', trades:0, pnl:0,         ret:0,    wr:null, cum:0        },
+  { month:'May 2025', trades:0, pnl:0,         ret:0,    wr:null, cum:0        },
+];
+
+const PERF_BY_MONTH = [
+  { month:'Mar 2026', total:6849.64, tickers:[{t:'IREN',pnl:6849.64}] },
+  { month:'Feb 2026', total:4937.84, tickers:[{t:'ZETA',pnl:3723.84},{t:'IREN',pnl:1214.00}] },
+  { month:'Jan 2026', total:-8502.94, tickers:[{t:'IREN',pnl:-8502.94}] },
+  { month:'Dec 2025', total:3558.58, tickers:[{t:'IREN',pnl:3558.58}] },
+  { month:'Nov 2025', total:4712.20, tickers:[{t:'IREN',pnl:4712.20}] },
+  { month:'Oct 2025', total:16536.79, tickers:[{t:'IREN',pnl:16536.79}] },
+  { month:'Sep 2025', total:3196.71, tickers:[{t:'IREN',pnl:3196.71}] },
+];
+
+let trades = JSON.parse(localStorage.getItem('pp_trades')) || [...TRADES_DATA];
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+
+  if (page === 'reports') initReportsChart();
+  if (page === 'performance') renderPerfByMonth();
+  if (page === 'trades') renderTrades();
+  if (page === 'settings') loadSettingsInputs();
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.page));
+});
+
+function goToAddTrade() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-add-trade').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('[data-page="trades"]').classList.add('active');
+  resetAddTradeForm();
+}
+
+function showAddTrade() { goToAddTrade(); }
+
+// ── TRADES TABLE ──────────────────────────────────────────────────────────────
+function renderTrades(filtered) {
+  const data = filtered ?? trades;
+  const tbody = document.getElementById('trades-tbody');
+  document.getElementById('trade-count').textContent = data.length + ' trades found';
+
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td>
+        <div class="td-ticker">${t.ticker}</div>
+        <div class="td-date">${t.date}</div>
+      </td>
+      <td>
+        <div class="td-details">
+          <span class="badge badge-contracts">${t.contracts} Contracts</span>
+          <span class="badge badge-sto">${t.action}</span>
+          <span class="badge badge-${t.type.toLowerCase()}">${t.type}</span>
+        </div>
+      </td>
+      <td>$${t.strike}</td>
+      <td>${t.expiry}</td>
+      <td class="td-premium" style="color:var(--green)">$${Math.abs(t.premium).toFixed(2)}</td>
+      <td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td>
+      <td class="td-pnl ${t.pnl < 0 ? 'neg' : ''}">↗ $${Math.abs(t.pnl).toFixed(2)}</td>
+      <td class="td-ror ${t.ror < 0 ? 'neg' : ''}">${t.ror > 0 ? '+' : ''}${t.ror}%</td>
+      <td>
+        <button class="action-btn" onclick="editTrade(${t.id})" title="Edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        </button>
+        <button class="action-btn" onclick="deleteTrade(${t.id})" title="Delete" style="color:var(--red)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterTrades() {
+  const search = document.getElementById('trade-search').value.toLowerCase();
+  const status = document.getElementById('filter-status').value;
+  const type   = document.getElementById('filter-type').value;
+  const filtered = trades.filter(t => {
+    if (search && !t.ticker.toLowerCase().includes(search)) return false;
+    if (status && t.status !== status) return false;
+    if (type && t.type !== type) return false;
+    return true;
+  });
+  renderTrades(filtered);
+}
+
+function deleteTrade(id) {
+  if (!confirm('Delete this trade?')) return;
+  trades = trades.filter(t => t.id !== id);
+  persistTrades();
+  filterTrades();
+}
+
+function editTrade(id) {
+  const t = trades.find(x => x.id === id);
+  if (!t) return;
+  goToAddTrade();
+  setTimeout(() => {
+    document.getElementById('ft-ticker').value    = t.ticker;
+    document.getElementById('ft-contracts').value = t.contracts;
+    document.getElementById('ft-strike').value    = t.strike;
+    document.getElementById('ft-premium').value   = t.premium;
+    document.getElementById('ft-status').value    = t.status.charAt(0) + t.status.slice(1).toLowerCase();
+    updateFormCalcs();
+  }, 50);
+}
+
+// ── ADD TRADE FORM ────────────────────────────────────────────────────────────
+function resetAddTradeForm() {
+  ['ft-ticker','ft-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ft-contracts').value  = 1;
+  document.getElementById('ft-strike').value     = 150;
+  document.getElementById('ft-premium').value    = 500;
+  document.getElementById('ft-fee').value        = 0.04;
+  document.getElementById('ft-realized').value   = 0;
+  document.getElementById('ft-unrealized').value = 0;
+  document.getElementById('ft-status').value     = 'Open';
+  updateFormCalcs();
+}
+
+function updateFormCalcs() {
+  const strike    = parseFloat(document.getElementById('ft-strike').value) || 0;
+  const contracts = parseInt(document.getElementById('ft-contracts').value)  || 1;
+  const strategy  = document.getElementById('ft-strategy').value;
+  if (strategy === 'Put') {
+    document.getElementById('ft-collateral').value = (strike * 100 * contracts).toFixed(2);
+    document.getElementById('ft-pmv').value = '';
+  } else {
+    document.getElementById('ft-collateral').value = '';
+  }
+}
+
+function saveTrade() {
+  const ticker = document.getElementById('ft-ticker').value.trim().toUpperCase();
+  if (!ticker) { alert('Please enter a ticker symbol.'); return; }
+  const newTrade = {
+    id: Date.now(),
+    ticker,
+    date: 'Apr 02, 2026',
+    contracts: parseInt(document.getElementById('ft-contracts').value) || 1,
+    action: 'SELL TO OPEN',
+    type: document.getElementById('ft-strategy').value.toUpperCase().includes('PUT') ? 'PUT' : 'CALL',
+    strike: parseFloat(document.getElementById('ft-strike').value) || 0,
+    expiry: document.getElementById('ft-expiry').value || 'N/A',
+    premium: parseFloat(document.getElementById('ft-premium').value) || 0,
+    status: document.getElementById('ft-status').value.toUpperCase(),
+    pnl: parseFloat(document.getElementById('ft-unrealized').value) || 0,
+    ror: 0,
+  };
+  trades.unshift(newTrade);
+  persistTrades();
+  navigate('trades');
+}
+
+// ── REPORTS CHART ─────────────────────────────────────────────────────────────
+let chartInstance = null;
+
+function initReportsChart() {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const ctx = document.getElementById('monthly-chart')?.getContext('2d');
+  if (!ctx) return;
+
+  const labels = ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+  const barData = [0, 0, 0, 0, 3196.71, 16536.79, 4712.20, 3558.58, -8502.94, 4937.84, 6849.64, 0];
+  const lineData = [0, 0, 0, 0, 1, 8, 4, 8, 7, 3, 6, 0];
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Monthly P&L',
+          data: barData,
+          backgroundColor: barData.map(v => v < 0 ? 'rgba(248,81,73,0.5)' : 'rgba(88,166,255,0.55)'),
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Trades',
+          data: lineData,
+          borderColor: '#39d98a',
+          backgroundColor: 'rgba(57,217,138,0.08)',
+          pointBackgroundColor: '#39d98a',
+          tension: 0.4,
+          yAxisID: 'y2',
+          pointRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b949e', font:{size:11} } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8b949e', font:{size:11}, callback: v => '$'+v.toLocaleString() } },
+        y2: { position: 'right', grid: { display: false }, ticks: { color: '#39d98a', font:{size:11} } },
+      }
+    }
+  });
+
+  // Monthly breakdown table
+  const tbody = document.getElementById('monthly-breakdown-tbody');
+  tbody.innerHTML = MONTHLY_DATA.map(m => `
+    <tr>
+      <td class="month-label">${m.month}</td>
+      <td>${m.trades}</td>
+      <td class="${m.pnl < 0 ? 'neg' : 'td-pnl'}">${m.pnl === 0 ? '$0' : (m.pnl < 0 ? '-$'+Math.abs(m.pnl).toFixed(2) : '$'+m.pnl.toFixed(2))}</td>
+      <td style="color:var(--green)">+0.00%</td>
+      <td>${m.wr === null ? '-' : m.wr+'%'}</td>
+      <td style="color:var(--green)">$${m.cum.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+    </tr>
+  `).join('');
+}
+
+function switchReportTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── PERFORMANCE ───────────────────────────────────────────────────────────────
+function renderPerfByMonth() {
+  const container = document.getElementById('perf-by-month');
+  container.innerHTML = PERF_BY_MONTH.map(m => `
+    <div class="perf-month-block">
+      <div class="perf-month-header">
+        <span>${m.month}</span>
+        <span class="mh-val ${m.total < 0 ? 'neg' : ''}">${m.total < 0 ? '-$'+Math.abs(m.total).toFixed(2) : '$'+m.total.toFixed(2)}</span>
+      </div>
+      <table class="perf-ticker-table">
+        <thead><tr><th>Ticker</th><th style="text-align:right">Realized P/L</th></tr></thead>
+        <tbody>
+          ${m.tickers.map(tk => `
+            <tr>
+              <td>${tk.t}</td>
+              <td style="text-align:right;color:${tk.pnl < 0 ? 'var(--red)' : 'var(--green)'};font-weight:600">
+                ${tk.pnl < 0 ? '-$'+Math.abs(tk.pnl).toFixed(2) : '$'+tk.pnl.toFixed(2)}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+}
+
+// ── CALCULATOR ────────────────────────────────────────────────────────────────
+function calcROR() {
+  const strike    = parseFloat(document.getElementById('calc-strike').value)    || 0;
+  const premium   = parseFloat(document.getElementById('calc-premium').value)   || 0;
+  const contracts = parseInt(document.getElementById('calc-contracts').value)   || 1;
+  const dte       = parseInt(document.getElementById('calc-dte').value)         || 1;
+  const total     = premium * contracts * 100;
+  const coll      = strike * contracts * 100;
+  const ror       = coll > 0 ? (total / coll) * 100 : 0;
+  const annual    = ror * (365 / dte);
+  document.getElementById('calc-total-prem').textContent = '$' + total.toFixed(2);
+  document.getElementById('calc-collateral').textContent = '$' + coll.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('calc-ror').textContent        = ror.toFixed(2) + '%';
+  document.getElementById('calc-annual').textContent     = annual.toFixed(2) + '%';
+}
+
+function calcCC() {
+  const purchase = parseFloat(document.getElementById('cc-purchase').value)  || 0;
+  const strike   = parseFloat(document.getElementById('cc-strike').value)    || 0;
+  const premium  = parseFloat(document.getElementById('cc-premium').value)   || 0;
+  const shares   = parseInt(document.getElementById('cc-shares').value)      || 100;
+  const maxProfit    = ((strike - purchase) + premium) * shares;
+  const breakeven    = purchase - premium;
+  const protection   = purchase > 0 ? (premium / purchase) * 100 : 0;
+  const retCalled    = purchase > 0 ? (((strike - purchase) + premium) / purchase) * 100 : 0;
+  document.getElementById('cc-max-profit').textContent  = '$' + maxProfit.toFixed(2);
+  document.getElementById('cc-breakeven').textContent   = '$' + breakeven.toFixed(2);
+  document.getElementById('cc-protection').textContent  = protection.toFixed(2) + '%';
+  document.getElementById('cc-return').textContent      = retCalled.toFixed(2) + '%';
+}
+
+
+// ── GIST SYNC ─────────────────────────────────────────────────────────────────
+function gistCfg() {
+  return {
+    token: localStorage.getItem('pp_gh_token') || '',
+    gistId: localStorage.getItem('pp_gist_id') || ''
+  };
+}
+
+function setSyncStatus(msg, ok) {
+  const el = document.getElementById('sync-status-detail');
+  if (el) el.innerHTML = '<span style="color:' + (ok ? 'var(--green)' : 'var(--red)') + '">' + msg + '</span>';
+}
+
+function showBanner(msg, ok) {
+  const b = document.getElementById('sync-banner');
+  if (!b) return;
+  b.style.display = 'flex';
+  b.style.background = ok ? 'rgba(57,217,138,0.12)' : 'rgba(248,81,73,0.12)';
+  b.style.border = '1px solid ' + (ok ? 'rgba(57,217,138,0.3)' : 'rgba(248,81,73,0.3)');
+  b.style.color = ok ? 'var(--green)' : 'var(--red)';
+  b.innerHTML = (ok ? '&#10003; ' : '&#9888; ') + msg;
+  setTimeout(() => { b.style.display = 'none'; }, 4000);
+}
+
+function saveGistConfig() {
+  const token  = document.getElementById('cfg-token').value.trim();
+  const gistId = document.getElementById('cfg-gist').value.trim();
+  if (!token || !gistId) { showBanner('Please fill in both fields.', false); return; }
+  localStorage.setItem('pp_gh_token', token);
+  localStorage.setItem('pp_gist_id', gistId);
+  setSyncStatus('Testing connection...', true);
+  pullFromGist(false).then(ok => {
+    if (ok) showBanner('Connected! Trades loaded from Gist.', true);
+    else    showBanner('Connection failed — check your token and Gist ID.', false);
+  });
+}
+
+async function pushToGist(showFeedback) {
+  const { token, gistId } = gistCfg();
+  if (!token || !gistId) { if (showFeedback) showBanner('Configure your Gist settings first.', false); return false; }
+  try {
+    const res = await fetch('https://api.github.com/gists/' + gistId, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'trades.json': { content: JSON.stringify(trades, null, 2) } } })
+    });
+    if (!res.ok) throw new Error(res.status);
+    const now = new Date().toLocaleTimeString();
+    setSyncStatus('Last synced at ' + now, true);
+    if (showFeedback) showBanner('Trades pushed to Gist successfully.', true);
+    return true;
+  } catch(e) {
+    setSyncStatus('Sync failed: ' + e.message, false);
+    if (showFeedback) showBanner('Push failed — ' + e.message, false);
+    return false;
+  }
+}
+
+async function pullFromGist(showFeedback) {
+  const { token, gistId } = gistCfg();
+  if (!token || !gistId) { if (showFeedback) showBanner('Configure your Gist settings first.', false); return false; }
+  try {
+    const res = await fetch('https://api.github.com/gists/' + gistId, {
+      headers: { 'Authorization': 'token ' + token }
+    });
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    const raw  = data.files['trades.json']?.content;
+    if (!raw) throw new Error('trades.json not found in Gist');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      trades = parsed;
+      localStorage.setItem('pp_trades', JSON.stringify(trades));
+    }
+    const now = new Date().toLocaleTimeString();
+    setSyncStatus('Last synced at ' + now + ' (' + trades.length + ' trades)', true);
+    if (showFeedback) showBanner('Pulled ' + trades.length + ' trades from Gist.', true);
+    renderTrades();
+    return true;
+  } catch(e) {
+    setSyncStatus('Sync failed: ' + e.message, false);
+    if (showFeedback) showBanner('Pull failed — ' + e.message, false);
+    return false;
+  }
+}
+
+// Save to both localStorage AND Gist on every write
+function persistTrades() {
+  localStorage.setItem('pp_trades', JSON.stringify(trades));
+  pushToGist(false);
+}
+
+// Load saved config into settings inputs on page open
+function loadSettingsInputs() {
+  const { token, gistId } = gistCfg();
+  const ti = document.getElementById('cfg-token');
+  const gi = document.getElementById('cfg-gist');
+  if (ti && token)  ti.value = token;
+  if (gi && gistId) gi.value = gistId;
+  if (token && gistId) setSyncStatus('Configured. Use Pull to fetch latest.', true);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderTrades();
+if (gistCfg().token && gistCfg().gistId) pullFromGist(false);
+calcROR();
+calcCC();
+updateFormCalcs();
+</script>
+</body>
+</html>
